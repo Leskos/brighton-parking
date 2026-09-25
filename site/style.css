@@ -47,6 +47,7 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #eef0f2; col
   overflow-x: auto; scrollbar-width: none;
 }
 .bar::-webkit-scrollbar { display: none; }
+.bar > * { flex-shrink: 0; }
 .clock, .legend {
   background: rgba(255,255,255,.94); border-radius: 999px; box-shadow: var(--shadow);
   font-size: 13px; white-space: nowrap;
@@ -114,3 +115,50 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #eef0f2; col
 .prices { border-collapse: collapse; font-variant-numeric: tabular-nums; }
 .prices td { padding: 1px 0; }
 .prices td + td { padding-left: 14px; text-align: right; font-weight: 600; }
+
+/* ---------- stay planner ---------- */
+.pill {
+  border: 0; border-radius: 999px; box-shadow: var(--shadow); font: inherit; font-size: 13px;
+  white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; cursor: pointer;
+}
+.pill.action { background: var(--accent); color: #fff; padding: 6px 12px; font-weight: 600; }
+.pill.chip { background: var(--accent); color: #fff; padding: 0; overflow: hidden; }
+.pill.chip button { border: 0; background: none; color: inherit; font: inherit; font-weight: 600; padding: 6px 10px; cursor: pointer; }
+.pill.chip button + button { border-left: 1px solid rgba(255,255,255,.3); padding: 6px 10px; }
+.pill[hidden], .clock[hidden] { display: none; }
+
+.plan-form { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.plan-form label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--muted); font-weight: 600; }
+.plan-form .full { grid-column: 1 / -1; }
+.plan-form .row { display: flex; gap: 8px; }
+.plan-form input, .plan-form select {
+  font: inherit; font-size: 16px; color: var(--ink); padding: 9px 10px; border: 1px solid var(--line);
+  border-radius: 10px; background: #fff; min-width: 0; width: 100%;
+}
+.plan-form .row input { flex: 1; }
+.plan-form .row .btn { white-space: nowrap; }
+.btn.big { padding: 12px 14px; font-size: 16px; font-weight: 600; }
+.btn:disabled { opacity: .6; }
+
+.plan-summary { display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border-radius: 12px;
+  background: #e8f5f0; border: 1px solid #b7e0d2; margin-bottom: 10px; }
+.plan-summary b { font-size: 17px; }
+.plan-summary span { font-size: 13px; color: var(--muted); }
+.plan-summary.none { background: #fff6e0; border-color: #f1d38a; }
+.options { list-style: none; margin: 0 0 12px; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.option {
+  width: 100%; display: grid; grid-template-columns: 62px 1fr auto; gap: 10px; align-items: center; text-align: left;
+  border: 1px solid var(--line); background: #fff; border-radius: 12px; padding: 9px 10px; font: inherit; color: inherit; cursor: pointer;
+}
+.option:active { background: #f3f5f8; }
+.option .price { font-weight: 700; font-size: 16px; font-variant-numeric: tabular-nums; }
+.option .price.best { color: #137a5c; }
+.option .what { display: flex; flex-direction: column; min-width: 0; font-size: 14px; }
+.option .what small { color: var(--muted); font-size: 12.5px; }
+.option .dist { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.plan-box { display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border-radius: 12px; margin-bottom: 14px; }
+.plan-box span { font-size: 13.5px; color: var(--muted); }
+.plan-box.ok { background: #e8f5f0; border: 1px solid #b7e0d2; }
+.plan-box.no { background: #f4f5f7; border: 1px solid #dde1e6; }
+.back { border: 0; background: none; color: var(--accent); font: inherit; font-size: 14px; font-weight: 600; padding: 0 0 8px; cursor: pointer; }
+.sheet[data-view="results"] { max-height: 55vh; }

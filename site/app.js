@@ -22,7 +22,7 @@ const STATUS_TEXT = {
 };
 
 const $ = id => document.getElementById(id);
-const bays = new Map();         // id -> { p: properties, iv: [[start, end], ...] week-minute intervals | null, status }
+const bays = new Map();         // id -> { p: properties, g: geometry, iv: [[start, end], ...] week-minute intervals | null, status }
 let prices = null;              // site/prices.json, if it loaded
 let selectedId = null;
 let searchMarker = null;
@@ -183,7 +183,7 @@ map.on("load", async () => {
   const points = { type: "FeatureCollection", features: [] };
   for (const f of fc.features) {
     const p = f.properties;
-    bays.set(p.id, { p, iv: compile(p.schedule), status: null });
+    bays.set(p.id, { p, g: f.geometry, iv: compile(p.schedule), status: null });
     points.features.push({ type: "Feature", properties: { id: p.id }, geometry: { type: "Point", coordinates: p.centroid } });
   }
 
@@ -285,8 +285,11 @@ function select(id) {
 }
 
 function closeSheet() {
+  const wasBay = $("sheet").dataset.view === "bay";
   if (selectedId) map.setFeatureState({ source: "bays", id: selectedId }, { selected: false });
   selectedId = null;
+  // With a plan active, closing a bay card goes back to the plan results.
+  if (wasBay && typeof planner !== "undefined" && planner.active) return showPlanResults();
   $("sheet").hidden = true;
 }
 $("sheet-close").addEventListener("click", closeSheet);
@@ -346,15 +349,18 @@ function renderSheet(id) {
     : `https://www.google.com/maps/dir/?api=1&destination=${lat},${lon}`;
 
   $("sheet-body").innerHTML = `
+    ${typeof planCardTop === "function" ? planCardTop(id) : ""}
     <h2>${esc(title)}</h2>
     <div class="sub">${esc(sub)}</div>
     <div class="status" style="--c:${COLOR[status]}">
       <i></i><div><b>${esc(STATUS_TEXT[status])}</b>${detail ? `<span>${esc(detail)}</span>` : ""}</div>
     </div>
+    ${typeof planCardBody === "function" ? planCardBody(id) : ""}
     <dl class="facts">${facts.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${v}</dd>`).join("")}</dl>
     ${p.issues ? `<div class="warn">Some of the council's data for this bay was unclear or missing, so double-check the signs.</div>` : ""}
     <div class="actions"><a class="btn primary" href="${directions}" target="_blank" rel="noopener">Directions</a></div>
     <p class="fine">From Brighton & Hove City Council data. Signs on the street always take precedence.</p>`;
+  $("sheet").dataset.view = "bay";
   $("sheet").hidden = false;
 }
 
