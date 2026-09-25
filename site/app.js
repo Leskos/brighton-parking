@@ -23,6 +23,7 @@ const STATUS_TEXT = {
 
 const $ = id => document.getElementById(id);
 const bays = new Map();         // id -> { p: properties, iv: [[start, end], ...] week-minute intervals | null, status }
+let prices = null;              // site/prices.json, if it loaded
 let selectedId = null;
 let searchMarker = null;
 
@@ -109,6 +110,32 @@ function hoursLines(schedule) {
   return [...groups].map(([d, t]) => `${d}, ${t.join(" & ")}`);
 }
 
+const money = n => `£${n.toFixed(2)}`;
+
+/** Price rows for a bay, e.g. [["1 hr", 1.8], ["2 hr", 3.5]], capped at its max stay. */
+function priceInfo(p) {
+  const band = prices?.bands?.[p.price_band];
+  if (!band) return null;
+  let season = null, rates = band.rates;
+  if (!rates) {
+    const month = +new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/London", month: "numeric" }).format(new Date());
+    season = month >= 3 && month <= 10 ? "summer" : "winter";
+    rates = band[season];
+  }
+  const tiers = Object.entries(rates).map(([m, v]) => [+m, v]).sort((a, b) => a[0] - b[0]);
+  const max = p.max_stay_mins;
+  const rows = [];
+  for (const [m, v] of tiers) {
+    if (max != null && m > max) {
+      // Max stay falls between tiers (e.g. 3 hr): you pay the next tier's "up to" price.
+      if (!rows.length || rows[rows.length - 1][0] < max) rows.push([max, v]);
+      break;
+    }
+    rows.push([m, v]);
+  }
+  return { label: band.label, season, rows: rows.map(([m, v]) => [duration(m), v]) };
+}
+
 function duration(mins) {
   if (mins == null) return null;
   const h = Math.floor(mins / 60), m = mins % 60;
@@ -136,6 +163,8 @@ const geolocate = new maplibregl.GeolocateControl({
 });
 map.addControl(geolocate, "bottom-right");
 geolocate.on("error", () => toast("Couldn't get your location"));
+
+fetch("prices.json").then(r => r.ok ? r.json() : null).then(j => { prices = j; }).catch(() => {});
 
 const dataReady = fetch(DATA_URL).then(r => {
   if (!r.ok) throw new Error(r.status);
@@ -284,7 +313,12 @@ function renderSheet(id) {
   }
 
   const title = TYPE_TITLE[p.type] + (p.red_route ? " · Red route" : "");
-  const sub = [p.zone && `Zone ${p.zone}`, p.tariff && `${p.tariff} tariff`].filter(Boolean).join(" · ");
+  const price = priceInfo(p);
+  const priceLabel = p.price_band ? prices?.bands?.[p.price_band]?.label : null;
+  const sub = [p.zone && p.zone !== "SEA" && `Zone ${p.zone}`, priceLabel || (p.tariff && `${p.tariff} tariff`)].filter(Boolean).join(" · ");
+  if ((status === "pay" || status === "shared") && price?.rows.length) {
+    detail = `From ${money(price.rows[0][1])} for ${price.rows[0][0]}` + (detail ? ` · ${detail}` : "");
+  }
 
   const facts = [];
   if (p.schedule) facts.push(["Hours", hoursLines(p.schedule).map(esc).join("<br>")]);
@@ -295,6 +329,13 @@ function renderSheet(id) {
   }
   if (p.type === "shared") facts.push(["Permits", `Zone ${esc(p.zone || "?")} permit holders can park without paying`]);
   if (p.type === "permit") facts.push(["Who", `Zone ${esc(p.zone || "?")} permit holders during hours`]);
+  if (price) {
+    const note = price.season ? ` <span class="muted">(${price.season} rate)</span>` : "";
+    facts.push(["Prices", `<table class="prices">${price.rows.map(([d, v]) =>
+      `<tr><td>up to ${esc(d)}</td><td>${money(v)}</td></tr>`).join("")}</table>${note}`]);
+  } else if (p.type !== "permit") {
+    facts.push(["Prices", `<span class="muted">Not known, so check the sign or PayByPhone</span>`]);
+  }
   if (p.pay_by_phone) facts.push(["PayByPhone", `<span class="pbp"><code>${esc(p.pay_by_phone)}</code>
       <button class="btn" data-copy="${esc(p.pay_by_phone)}">Copy</button></span>`]);
 

@@ -1,0 +1,48 @@
+{
+  "source": "https://www.brighton-hove.gov.uk/parking/street-parking/paid-parking-zone-prices",
+  "checked": "2026-09-25",
+  "notes": "Hand-maintained from the council's per-zone price pages. Rates are keyed by maximum stay in minutes ('up to'). Seasonal bands: summer = 1 March to 31 October, winter = 1 November to end of February. scrape.py assigns each bay a price_band using by_pay_by_phone first, then by_tariff.",
+  "bands": {
+    "low": {
+      "label": "Low tariff",
+      "rates": { "60": 1.80, "120": 3.50, "240": 6.70, "360": 7.50, "660": 9.50 }
+    },
+    "medium": {
+      "label": "Medium tariff",
+      "rates": { "60": 4.90, "120": 9.00, "240": 14.00, "360": 16.00, "660": 20.00 }
+    },
+    "high": {
+      "label": "High tariff",
+      "rates": { "60": 5.90, "120": 11.00, "240": 16.60 }
+    },
+    "seafront": {
+      "label": "Seafront",
+      "summer": { "60": 5.70, "120": 9.80, "240": 16.50, "360": 20.70, "660": 24.90 },
+      "winter": { "60": 3.30, "120": 7.40, "240": 10.70, "360": 14.00, "660": 17.20 }
+    },
+    "seafront-flat": {
+      "label": "Seafront",
+      "rates": { "60": 2.90, "120": 5.50, "240": 10.70, "360": 14.00, "660": 17.20 }
+    },
+    "kingsway": {
+      "label": "Kingsway",
+      "summer": { "60": 2.50, "120": 4.90, "240": 9.90, "360": 12.90, "660": 15.90 },
+      "winter": { "60": 2.30, "120": 4.50, "240": 9.50, "360": 12.00, "660": 15.00 }
+    }
+  },
+  "by_pay_by_phone": {
+    "85322": "seafront",
+    "85327": "seafront",
+    "85328": "seafront",
+    "85329": "seafront",
+    "85325": "seafront-flat",
+    "85332": "seafront-flat",
+    "85324": "kingsway",
+    "88791": "kingsway"
+  },
+  "by_tariff": {
+    "Low": "low",
+    "Medium": "medium",
+    "High": "high"
+  }
+}

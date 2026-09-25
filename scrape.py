@@ -31,6 +31,7 @@ LAYERS = {
 PAGE = 1000
 OUT = Path(__file__).parent / "data"
 SITE_DATA = Path(__file__).parent / "site" / "data"   # copy served by the web app
+PRICES = Path(__file__).parent / "site" / "prices.json"  # hand-maintained tariff table
 DAY_NAMES = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
 
 
@@ -226,6 +227,13 @@ def centroid(geom):
     return [round(best[0], 6), round(best[1], 6)]
 
 
+def price_band(props, prices):
+    """Which band in prices.json applies: PayByPhone code first (seafront, Kingsway), then tariff."""
+    if props["type"] == "permit":
+        return None
+    return prices["by_pay_by_phone"].get(props["pay_by_phone"]) or prices["by_tariff"].get(props["tariff"])
+
+
 def normalise(feature, bay_type):
     p = {k.lower(): v for k, v in feature["properties"].items()}
     layer_name = clean(p.get("layer")) or ""
@@ -264,12 +272,15 @@ def normalise(feature, bay_type):
 
 def main():
     (OUT / "raw").mkdir(parents=True, exist_ok=True)
+    prices = json.loads(PRICES.read_text(encoding="utf-8"))
     all_features, counts, issue_log = [], {}, []
     for layer_id, bay_type in LAYERS.items():
         print(f"fetching layer {layer_id} ({bay_type}) ...", flush=True)
         raw = fetch_layer(layer_id)
         (OUT / "raw" / f"{bay_type}.geojson").write_text(json.dumps(raw), encoding="utf-8")
         feats = [normalise(f, bay_type) for f in raw["features"] if f.get("geometry")]
+        for f in feats:
+            f["properties"]["price_band"] = price_band(f["properties"], prices)
         counts[bay_type] = len(feats)
         for f in feats:
             if f["properties"]["issues"]:
@@ -280,7 +291,7 @@ def main():
     fc = {"type": "FeatureCollection", "features": all_features}
     (OUT / "parking_bays.geojson").write_text(json.dumps(fc, separators=(",", ":")), encoding="utf-8")
 
-    cols = ["id", "type", "zone", "red_route", "tariff", "pay_by_phone", "max_stay_mins", "no_return_mins",
+    cols = ["id", "type", "zone", "red_route", "tariff", "price_band", "pay_by_phone", "max_stay_mins", "no_return_mins",
             "schedule", "days_raw", "times_raw", "lat", "lon", "area_m2", "source_objectid", "issues"]
     with open(OUT / "parking_bays.csv", "w", newline="", encoding="utf-8") as fh:
         w = csv.DictWriter(fh, fieldnames=cols, extrasaction="ignore")

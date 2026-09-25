@@ -110,3 +110,7 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #eef0f2; col
 .loading[hidden], .toast[hidden], .sheet[hidden] { display: none; }
 .maplibregl-ctrl-bottom-right { margin-bottom: env(safe-area-inset-bottom); }
 .maplibregl-ctrl-group button { width: 40px; height: 40px; }
+.muted { color: var(--muted); font-size: 13px; }
+.prices { border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.prices td { padding: 1px 0; }
+.prices td + td { padding-left: 14px; text-align: right; font-weight: 600; }
