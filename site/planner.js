@@ -248,7 +248,7 @@ function fitToPlan() {
   const kx = 111320 * Math.cos(lat * Math.PI / 180), ky = 110540;
   const sheetH = $("sheet").hidden ? 0 : $("sheet").offsetHeight;
   map.fitBounds([[lon - r / kx, lat - r / ky], [lon + r / kx, lat + r / ky]], {
-    padding: { top: 120, bottom: Math.min(sheetH, window.innerHeight * 0.6) + 20, left: 20, right: 20 },
+    padding: { top: 160, bottom: Math.min(sheetH, window.innerHeight * 0.6) + 20, left: 20, right: 20 },
     maxZoom: 18, duration: 800,
   });
 }

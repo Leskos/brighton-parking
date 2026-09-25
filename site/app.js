@@ -223,6 +223,7 @@ map.on("load", async () => {
   setInterval(refresh, 30 * 1000);
   document.addEventListener("visibilitychange", () => { if (!document.hidden) refresh(); });
   $("loading").hidden = true;
+  $("plan-btn").hidden = false;
 
   // Jump to the user's location straight away if they've already allowed it.
   navigator.permissions?.query({ name: "geolocation" })

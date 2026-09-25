@@ -29,15 +29,6 @@
       </button>
     </form>
     <div class="bar">
-      <button id="plan-btn" class="pill action" type="button">
-        <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15" rx="2.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M3.5 10h17M8 3v4M16 3v4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-        Plan a stay
-      </button>
-      <span id="plan-chip" class="pill chip" hidden>
-        <button id="plan-chip-open" type="button">Plan</button>
-        <button id="plan-chip-clear" type="button" aria-label="Clear plan">✕</button>
-      </span>
-      <span id="clock" class="clock">Loading…</span>
       <ul class="legend" aria-label="Legend">
         <li><i style="--c:var(--free)"></i>Free</li>
         <li><i style="--c:var(--pay)"></i>Pay</li>
@@ -45,7 +36,19 @@
         <li><i style="--c:var(--permit)"></i>Permit only</li>
       </ul>
     </div>
+    <div class="bar">
+      <span id="clock" class="clock">Loading…</span>
+      <span id="plan-chip" class="pill chip" hidden>
+        <button id="plan-chip-open" type="button">Plan</button>
+        <button id="plan-chip-clear" type="button" aria-label="Clear plan">✕</button>
+      </span>
+    </div>
   </header>
+
+  <button id="plan-btn" class="plan-fab" type="button" hidden>
+    <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15" rx="2.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M3.5 10h17M8 3v4M16 3v4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+    Plan a stay
+  </button>
 
   <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
   <div id="loading" class="loading">Loading parking bays…</div>
