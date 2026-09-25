@@ -411,21 +411,32 @@ const FULL_POSTCODE = /^[A-Z]{1,2}\d[A-Z\d]?\s*\d[A-Z]{2}$/i;
 const OUTCODE = /^[A-Z]{1,2}\d[A-Z\d]?$/i;
 const BH_VIEWBOX = "-0.26,50.89,-0.02,50.79";   // Brighton & Hove, for place-name searches
 
+/** Move the map to a search result and drop a pin. Streets with an extent are fitted whole. */
+function showPlace(hit) {
+  closeSheet();
+  if (hit.bbox) map.fitBounds(hit.bbox, { padding: { top: 170, bottom: 60, left: 40, right: 40 }, maxZoom: 17 });
+  else map.flyTo({ center: [hit.lon, hit.lat], zoom: hit.zoom || 17.5, speed: 1.6 });
+  searchMarker?.remove();
+  searchMarker = new maplibregl.Marker({ color: "#1f3a5f" }).setLngLat([hit.lon, hit.lat]).addTo(map);
+}
+
+const mainSuggest = attachSuggest($("q"), $("q-suggest"), showPlace);
+
 $("search").addEventListener("submit", async e => {
   e.preventDefault();
   const input = $("q");
   const q = input.value.trim();
   if (!q) return;
   input.blur();   // dismiss the phone keyboard
+  const top = mainSuggest.first();
+  mainSuggest.close();
+  if (top) { input.value = top.label; return showPlace(top); }
   try {
     const hit = await geocode(q);
     if (!hit) return toast(`Couldn't find “${q}”`);
-    closeSheet();
-    map.flyTo({ center: [hit.lon, hit.lat], zoom: hit.zoom, speed: 1.6 });
-    searchMarker?.remove();
-    searchMarker = new maplibregl.Marker({ color: "#1f3a5f" }).setLngLat([hit.lon, hit.lat]).addTo(map);
+    showPlace(hit);
   } catch {
-    toast("Search failed — check your connection");
+    toast("Search failed, so check your connection");
   }
 });
 
@@ -456,21 +467,6 @@ async function geocode(q) {
   const hit = (inCity.length ? inCity : hits).sort((a, b) => dist(a) - dist(b))[0];
   return { lat: +hit.lat, lon: +hit.lon, zoom: 17 };
 }
-
-// Postcode suggestions as you type.
-let suggestTimer;
-$("q").addEventListener("input", e => {
-  clearTimeout(suggestTimer);
-  const q = e.target.value.trim();
-  if (q.length < 3 || !/^[A-Z]{1,2}\d/i.test(q)) return;
-  suggestTimer = setTimeout(async () => {
-    try {
-      const r = await fetch(`https://api.postcodes.io/postcodes/${encodeURIComponent(q)}/autocomplete?limit=6`);
-      const { result } = await r.json();
-      $("suggestions").innerHTML = (result || []).map(pc => `<option value="${esc(pc)}">`).join("");
-    } catch { /* suggestions are optional */ }
-  }, 250);
-});
 
 // ---------------------------------------------------------------- toast
 

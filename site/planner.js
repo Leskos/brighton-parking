@@ -13,6 +13,7 @@ const planner = {
   inputs: null,        // { where, date, time, dur, radius }
   origin: null,        // { lat, lon }
   here: null,          // last "use my location" fix
+  picked: null,        // last suggestion picked in the "Near" box
   results: null,       // { options, extra, counts, best, byId }
   flagged: [],         // ids carrying a "plan" feature-state
   savedPaint: null,    // paint properties to restore on exit
@@ -285,10 +286,11 @@ function openPlanForm() {
     <form id="plan-form" class="plan-form" autocomplete="off">
       <label class="full">Near
         <span class="row">
-          <input name="where" value="${esc(v.where)}" placeholder="Postcode or street" required
-                 autocapitalize="characters" spellcheck="false" enterkeyhint="go">
+          <input name="where" value="${esc(v.where)}" placeholder="Street, venue or postcode" required
+                 autocapitalize="words" spellcheck="false" enterkeyhint="go">
           <button type="button" class="btn" data-act="here">Use my location</button>
         </span>
+        <ul class="suggest inline" id="plan-suggest" hidden></ul>
       </label>
       <label>Date <input type="date" name="date" value="${esc(v.date)}" required></label>
       <label>Arrive <input type="time" name="time" value="${esc(v.time)}" step="300" required></label>
@@ -298,6 +300,7 @@ function openPlanForm() {
     </form>`;
   $("sheet").dataset.view = "form";
   $("sheet").hidden = false;
+  attachSuggest($("plan-form").elements.where, $("plan-suggest"), it => { planner.picked = it; });
 }
 
 /** Hide the sheet without the plan-aware "back to results" behaviour. */
@@ -320,6 +323,7 @@ async function submitPlan(form) {
   try {
     let origin;
     if (inputs.where === MY_LOCATION && planner.here) origin = planner.here;
+    else if (planner.picked && inputs.where === planner.picked.label) origin = { lat: planner.picked.lat, lon: planner.picked.lon };
     else {
       const hit = await geocode(inputs.where);
       if (!hit) throw new Error(`Couldn't find “${inputs.where}”`);

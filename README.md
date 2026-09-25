@@ -72,7 +72,7 @@ A bay is restricted when the current weekday is in `days` and `start <= now < en
 `site/` is a static, mobile-first map (no build step, no framework):
 
 - **`index.html` / `style.css` / `app.js`**: a MapLibre GL map on OpenFreeMap tiles. Bays are coloured by their status *right now*, in Europe/London time: free, pay, pay-or-permit, permit only, or unknown. The colours refresh every 30 seconds. Tapping a bay opens a card with its hours, when the status next changes, max stay, and PayByPhone code.
-- **Search**: postcodes (and partial postcodes like `BN1`) via [postcodes.io](https://postcodes.io), with suggestions as you type. Street and place names use OpenStreetMap's Nominatim, limited to Brighton & Hove.
+- **Search** (`suggest.js`): suggestions as you type for streets and venues from [Photon](https://photon.komoot.io), an OpenStreetMap geocoder that allows autocomplete. Postcodes come from [postcodes.io](https://postcodes.io). Results are limited to Brighton & Hove and ranked nearest to the map view. Picking a street frames the whole street. Enter without picking a suggestion falls back to postcodes.io and Nominatim. The planner's "Near" box uses the same suggestions.
 - **Plan a stay** (`planner.js`): pick a place, date, arrival time, how long you're staying, and a distance (200 m by default). It lists the cheapest legal bays, without moving the car, and colours the map as cheapest / other options / not allowed. The rules, for a driver without a permit:
   - Permit bays only count if the whole stay avoids permit hours.
   - Paid and shared bays charge only for the part of the stay inside charging hours. Each separate stretch is paid as its own session at the "up to" price (e.g. 7pm to 10am the next day means paying for 7–8pm, then 9–10am).

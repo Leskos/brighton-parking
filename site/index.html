@@ -20,14 +20,16 @@
   <div id="map" aria-label="Map of parking bays"></div>
 
   <header class="top">
+    <div class="search-wrap">
     <form id="search" class="search" role="search" autocomplete="off">
-      <input id="q" type="search" list="suggestions" placeholder="Postcode or street, e.g. BN1 1AA"
-             aria-label="Postcode or street" enterkeyhint="search" autocapitalize="characters" spellcheck="false">
-      <datalist id="suggestions"></datalist>
+      <input id="q" type="search" placeholder="Street, venue or postcode"
+             aria-label="Street, venue or postcode" enterkeyhint="search" autocapitalize="words" spellcheck="false">
       <button type="submit" aria-label="Search">
         <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M15.5 15.5 21 21" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
       </button>
     </form>
+    <ul id="q-suggest" class="suggest" hidden></ul>
+    </div>
     <div class="bar">
       <ul class="legend" aria-label="Legend">
         <li><i style="--c:var(--free)"></i><span id="legend-free">Free</span></li>
@@ -62,6 +64,7 @@
   </section>
 
 <script src="https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/dist/maplibre-gl.js"></script>
+<script src="suggest.js"></script>
 <script src="app.js"></script>
 <script src="planner.js"></script>
 </body>
