@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Brighton Parking</title>
+<style>
+  :root { color-scheme: light dark; font-family: system-ui, sans-serif; }
+  body { margin: 0; padding: 24px 16px; max-width: 480px; }
+  h1 { font-size: 1.4rem; margin: 0 0 8px; }
+  .muted { opacity: .7; font-size: .9rem; }
+</style>
+</head>
+<body>
+  <h1>Brighton Parking</h1>
+  <p class="muted">Placeholder: the map is coming soon. This page confirms the data pipeline works.</p>
+  <p id="status">Loading data…</p>
+<script>
+  fetch("data/metadata.json")
+    .then(r => r.json())
+    .then(m => {
+      const c = m.counts;
+      document.getElementById("status").textContent =
+        `${m.total.toLocaleString()} bays loaded (${c.paid} paid, ${c.permit} permit, ${c.shared} shared). ` +
+        `Data fetched ${new Date(m.fetched_at).toLocaleString("en-GB")}.`;
+    })
+    .catch(() => { document.getElementById("status").textContent = "Couldn't load data."; });
+</script>
+</body>
+</html>
