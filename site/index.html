@@ -30,7 +30,7 @@
     </form>
     <div class="bar">
       <ul class="legend" aria-label="Legend">
-        <li><i style="--c:var(--free)"></i>Free</li>
+        <li><i style="--c:var(--free)"></i><span id="legend-free">Free</span></li>
         <li><i style="--c:var(--pay)"></i>Pay</li>
         <li><i style="--c:var(--shared)"></i>Pay / permit</li>
         <li><i style="--c:var(--permit)"></i>Permit only</li>
@@ -38,6 +38,7 @@
     </div>
     <div class="bar">
       <span id="clock" class="clock">Loading…</span>
+      <button id="permit-btn" class="pill ghost" type="button">No permit</button>
       <span id="plan-chip" class="pill chip" hidden>
         <button id="plan-chip-open" type="button">Plan</button>
         <button id="plan-chip-clear" type="button" aria-label="Clear plan">✕</button>

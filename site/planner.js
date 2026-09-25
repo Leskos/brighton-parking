@@ -59,6 +59,7 @@ function sessionText([x, y], ctx) {
 function stayOutcome(bay, ctx) {
   const p = bay.p;
   if (!bay.iv) return { ok: false, unknown: true, reason: "The council's data has no hours for this bay" };
+  if (permitCovers(p)) return { ok: true, cost: 0, sessions: [], text: `Free with your Zone ${myZone} permit` };
   const sessions = restrictedSessions(bay.iv, ctx.s, ctx.e);
 
   if (p.type === "permit") {
@@ -237,6 +238,7 @@ function exitPlan() {
   for (const id of ["plan-area-line", "plan-area-fill"]) if (map.getLayer(id)) map.removeLayer(id);
   if (map.getSource("plan-area")) map.removeSource("plan-area");
   if (planner.savedLegend != null) document.querySelector(".legend").innerHTML = planner.savedLegend;
+  updatePermitChrome();
   $("plan-chip").hidden = true;
   $("plan-btn").hidden = false;
   $("clock").hidden = false;
@@ -365,7 +367,7 @@ function optionHtml(n) {
   const p = n.bay.p;
   const price = n.out.cost == null ? "£?" : n.out.cost === 0 ? "Free" : money(n.out.cost);
   const what = [TYPE_TITLE[p.type], p.zone && p.zone !== "SEA" && `Zone ${p.zone}`,
-    p.type !== "permit" && p.max_stay_mins != null && `max ${duration(p.max_stay_mins)}`].filter(Boolean).join(" · ");
+    p.type !== "permit" && !permitCovers(p) && p.max_stay_mins != null && `max ${duration(p.max_stay_mins)}`].filter(Boolean).join(" · ");
   return `<li><button class="option" data-id="${esc(n.id)}">
       <span class="price${n.out.cost === planner.results.best ? " best" : ""}">${price}</span>
       <span class="what"><b>${esc(what)}</b><small>${esc(n.out.text)}</small></span>
@@ -401,8 +403,9 @@ function showPlanResults() {
       <button class="btn" data-act="edit">Change</button>
       <button class="btn" data-act="clear">Clear plan</button>
     </div>
-    <p class="fine">Distances are in a straight line. Assumes you don't have a permit, and that each separate
-      charging period is paid for as its own session. Bank holidays and event days aren't included, so always check the signs.</p>`;
+    <p class="fine">Distances are in a straight line. ${myZone
+      ? `Your Zone ${esc(myZone)} permit is treated as covering Zone ${esc(myZone)} permit and shared-use bays for free, with no time limit.`
+      : "Assumes you don't have a permit."} Each separate charging period is paid for as its own session. Bank holidays and event days aren't included, so always check the signs.</p>`;
   $("sheet").dataset.view = "results";
   $("sheet").hidden = false;
 }

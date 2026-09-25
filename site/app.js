@@ -18,6 +18,7 @@ const STATUS_TEXT = {
   pay: "Pay to park now",
   shared: "Pay to park now (or permit holders)",
   permit: "Permit holders only now",
+  mine: "You can park here with your permit",
   unknown: "Hours unknown — check the signs",
 };
 
@@ -26,6 +27,18 @@ const bays = new Map();         // id -> { p: properties, g: geometry, iv: [[sta
 let prices = null;              // site/prices.json, if it loaded
 let selectedId = null;
 let searchMarker = null;
+
+// ---------------------------------------------------------------- my permit zone (saved on this device)
+
+const ZONE_STORE = "brighton-parking-permit-zone";
+let myZone = null;
+try { myZone = localStorage.getItem(ZONE_STORE) || null; } catch { /* storage may be unavailable */ }
+
+/** Does the user's permit cover this bay? Bays like "N&R" belong to more than one zone. */
+function permitCovers(p) {
+  if (!myZone || !p.zone || p.type === "paid") return false;
+  return p.zone.split("&").map(z => z.trim()).includes(myZone);
+}
 
 // ---------------------------------------------------------------- time (always Europe/London)
 
@@ -80,6 +93,7 @@ function minutesToChange(iv, wm) {
 function statusOf(bay, wm) {
   if (!bay.iv) return "unknown";
   if (!restrictedAt(bay.iv, wm)) return "free";
+  if (permitCovers(bay.p)) return "mine";
   return { paid: "pay", shared: "shared", permit: "permit" }[bay.p.type];
 }
 
@@ -191,7 +205,7 @@ map.on("load", async () => {
   map.addSource("points", { type: "geojson", data: points, promoteId: "id" });
 
   const color = ["match", ["coalesce", ["feature-state", "status"], "unknown"],
-    "free", COLOR.free, "pay", COLOR.pay, "shared", COLOR.shared, "permit", COLOR.permit, COLOR.unknown];
+    "free", COLOR.free, "mine", COLOR.free, "pay", COLOR.pay, "shared", COLOR.shared, "permit", COLOR.permit, COLOR.unknown];
   const beforeLabels = map.getStyle().layers.find(l => l.type === "symbol")?.id;
 
   map.addLayer({
@@ -220,6 +234,7 @@ map.on("load", async () => {
   });
 
   refresh();
+  updatePermitChrome();
   setInterval(refresh, 30 * 1000);
   document.addEventListener("visibilitychange", () => { if (!document.hidden) refresh(); });
   $("loading").hidden = true;
@@ -325,6 +340,11 @@ function renderSheet(id) {
   if (status === "pay" || status === "shared") {
     const from = price?.rows.length ? `From ${money(price.rows[0][1])} for ${price.rows[0][0]}` : "";
     detail = [maxStay, from, detail].filter(Boolean).join(" · ");
+  } else if (status === "mine") {
+    detail = `Covered by your Zone ${myZone} permit` + (p.type === "shared" ? ", so no need to pay" : "")
+      + (detail.startsWith("Free from") ? ` · Restrictions end ${detail.slice(10)}` : "");
+  } else if (status === "free" && permitCovers(p)) {
+    detail = `Your Zone ${myZone} permit also covers this bay during restricted hours`;
   } else if (status === "free" && maxStay && detail) {
     detail = `${detail}, ${maxStay.toLowerCase()}`;
   }
@@ -338,8 +358,9 @@ function renderSheet(id) {
       : `<span class="muted">Not recorded, so check the sign</span>`]);
     if (p.no_return_mins != null) facts.push(["No return", `Can't come back within ${esc(duration(p.no_return_mins))} of leaving`]);
   }
-  if (p.type === "shared") facts.push(["Permits", `Zone ${esc(p.zone || "?")} permit holders can park without paying`]);
-  if (p.type === "permit") facts.push(["Who", `Zone ${esc(p.zone || "?")} permit holders during hours`]);
+  const you = permitCovers(p) ? " (that includes you)" : "";
+  if (p.type === "shared") facts.push(["Permits", `Zone ${esc(p.zone || "?")} permit holders can park without paying${you}`]);
+  if (p.type === "permit") facts.push(["Who", `Zone ${esc(p.zone || "?")} permit holders during hours${you}`]);
   if (price) {
     const note = price.season ? ` <span class="muted">(${price.season} rate)</span>` : "";
     facts.push(["Prices", `<table class="prices">${price.rows.map(([d, v]) =>
@@ -461,3 +482,62 @@ function toast(msg) {
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => { t.hidden = true; }, 3500);
 }
+
+// ---------------------------------------------------------------- my permit zone picker
+
+function allZones() {
+  const zones = new Set();
+  for (const { p } of bays.values()) {
+    if (p.type === "paid" || !p.zone) continue;
+    for (const z of p.zone.split("&")) if (z.trim() && z.trim() !== "NA") zones.add(z.trim());
+  }
+  return [...zones].sort((a, b) => (/^\d/.test(a) - /^\d/.test(b)) || a.localeCompare(b, "en", { numeric: true }));
+}
+
+function updatePermitChrome() {
+  $("permit-btn").textContent = myZone ? `Zone ${myZone} permit` : "No permit";
+  $("permit-btn").classList.toggle("on", !!myZone);
+  const free = $("legend-free");
+  if (free) free.textContent = myZone ? "Free / your permit" : "Free";
+}
+
+function openPermitPicker() {
+  if (selectedId) map.setFeatureState({ source: "bays", id: selectedId }, { selected: false });
+  selectedId = null;
+  const zones = allZones();
+  $("sheet-body").innerHTML = `
+    <h2>My permit zone</h2>
+    <div class="sub">Pick the zone on your resident or visitor permit. Permit and shared-use bays in that zone
+      will show as available to you, and Plan a stay will count them as free.</div>
+    <div class="zones">
+      <button class="zone none${myZone ? "" : " on"}" data-zone="">No permit</button>
+      ${zones.map(z => `<button class="zone${z === myZone ? " on" : ""}" data-zone="${esc(z)}">${esc(z)}</button>`).join("")}
+    </div>
+    <p class="fine">Saved on this device only. Your zone letter is on your permit, or on the signs at the entry to your zone.</p>`;
+  $("sheet").dataset.view = "permit";
+  $("sheet").hidden = false;
+}
+
+function setMyZone(zone) {
+  myZone = zone || null;
+  try {
+    if (myZone) localStorage.setItem(ZONE_STORE, myZone);
+    else localStorage.removeItem(ZONE_STORE);
+  } catch { /* optional */ }
+  updatePermitChrome();
+  refresh();
+  if (typeof planner !== "undefined" && planner.active) {
+    computePlan();
+    applyPlanStyle();
+    showPlanResults();
+  } else {
+    $("sheet").hidden = true;
+  }
+  toast(myZone ? `Using your Zone ${myZone} permit` : "Showing bays for drivers without a permit");
+}
+
+$("permit-btn").addEventListener("click", openPermitPicker);
+$("sheet-body").addEventListener("click", e => {
+  const z = e.target.closest("[data-zone]");
+  if (z) setMyZone(z.dataset.zone);
+});

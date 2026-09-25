@@ -171,3 +171,14 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #eef0f2; col
 .plan-box.no { background: #f4f5f7; border: 1px solid #dde1e6; }
 .back { border: 0; background: none; color: var(--accent); font: inherit; font-size: 14px; font-weight: 600; padding: 0 0 8px; cursor: pointer; }
 .sheet[data-view="results"] { max-height: 55vh; }
+
+/* ---------- my permit zone ---------- */
+.pill.ghost { background: rgba(255,255,255,.94); color: var(--ink); padding: 6px 11px; font-weight: 600; }
+.pill.ghost.on { background: #e8f5f0; color: #137a5c; box-shadow: var(--shadow), inset 0 0 0 1.5px #1b9e77; }
+.zones { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; margin: 4px 0 14px; }
+.zone {
+  font: inherit; font-size: 16px; font-weight: 700; padding: 11px 0; border-radius: 10px; cursor: pointer;
+  border: 1px solid var(--line); background: #f7f8fa; color: var(--ink);
+}
+.zone.none { grid-column: 1 / -1; font-size: 15px; }
+.zone.on { background: var(--accent); border-color: var(--accent); color: #fff; }

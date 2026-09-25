@@ -79,6 +79,7 @@ A bay is restricted when the current weekday is in `days` and `start <= now < en
   - A bay is ruled out if any one session is longer than its max stay.
   - Seasonal prices use the planned date.
   - Distance is a straight line to the nearest edge of the bay.
+- **My permit zone**: the chip next to the time lets you pick your permit zone. It's saved in this browser only. Permit-only and shared-use bays in that zone (including joint zones like `N&R`) turn green while restricted, their cards say your permit covers them, and Plan a stay counts them as free with no time limit. That's an assumption about how shared bays treat permit holders, and the planner says so.
 - **Prices** (`prices.json`): the council's current £ rates, copied by hand from its [per-zone price pages](https://www.brighton-hove.gov.uk/parking/street-parking/paid-parking-zone-prices). `scrape.py` gives each paid or shared bay a `price_band`, matching by PayByPhone code first (seafront and Kingsway bays have their own seasonal rates) and then by tariff (Low/Medium/High). The card shows rates up to the bay's max stay. **When the council changes prices, edit `prices.json` and update `checked`.**
 - **`manifest.webmanifest` + `icons/`**: lets you "Add to Home Screen" as an app. Regenerate the icons with `python tools/make_icons.py`.
 
