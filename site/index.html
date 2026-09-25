@@ -1,30 +1,55 @@
 <!doctype html>
-<html lang="en">
+<html lang="en-GB">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Brighton Parking</title>
-<style>
-  :root { color-scheme: light dark; font-family: system-ui, sans-serif; }
-  body { margin: 0; padding: 24px 16px; max-width: 480px; }
-  h1 { font-size: 1.4rem; margin: 0 0 8px; }
-  .muted { opacity: .7; font-size: .9rem; }
-</style>
+<meta name="description" content="Where can I park in Brighton & Hove right now?">
+<meta name="theme-color" content="#1f3a5f">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Parking">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/dist/maplibre-gl.css">
+<link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <h1>Brighton Parking</h1>
-  <p class="muted">Placeholder: the map is coming soon. This page confirms the data pipeline works.</p>
-  <p id="status">Loading data…</p>
-<script>
-  fetch("data/metadata.json")
-    .then(r => r.json())
-    .then(m => {
-      const c = m.counts;
-      document.getElementById("status").textContent =
-        `${m.total.toLocaleString()} bays loaded (${c.paid} paid, ${c.permit} permit, ${c.shared} shared). ` +
-        `Data fetched ${new Date(m.fetched_at).toLocaleString("en-GB")}.`;
-    })
-    .catch(() => { document.getElementById("status").textContent = "Couldn't load data."; });
-</script>
+  <div id="map" aria-label="Map of parking bays"></div>
+
+  <header class="top">
+    <form id="search" class="search" role="search" autocomplete="off">
+      <input id="q" type="search" list="suggestions" placeholder="Postcode or street, e.g. BN1 1AA"
+             aria-label="Postcode or street" enterkeyhint="search" autocapitalize="characters" spellcheck="false">
+      <datalist id="suggestions"></datalist>
+      <button type="submit" aria-label="Search">
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M15.5 15.5 21 21" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+      </button>
+    </form>
+    <div class="bar">
+      <span id="clock" class="clock">Loading…</span>
+      <ul class="legend" aria-label="Legend">
+        <li><i style="--c:var(--free)"></i>Free</li>
+        <li><i style="--c:var(--pay)"></i>Pay</li>
+        <li><i style="--c:var(--shared)"></i>Pay / permit</li>
+        <li><i style="--c:var(--permit)"></i>Permit only</li>
+      </ul>
+    </div>
+  </header>
+
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+  <div id="loading" class="loading">Loading parking bays…</div>
+
+  <section id="sheet" class="sheet" aria-live="polite" hidden>
+    <button id="sheet-close" class="close" aria-label="Close">
+      <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+    </button>
+    <div id="sheet-body"></div>
+  </section>
+
+<script src="https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/dist/maplibre-gl.js"></script>
+<script src="app.js"></script>
 </body>
 </html>

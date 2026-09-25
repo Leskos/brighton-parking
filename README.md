@@ -58,13 +58,28 @@ A bay is restricted when the current weekday is in `days` and `start <= now < en
 - `permit-2753` ("Sun to Fri & Sat" / "9 am to 8 pm & 4 pm to 8 pm") was paired by position: Sun–Fri 09:00–20:00, Sat 16:00–20:00.
 - The council's data is not the legal record. On-street signs and the traffic orders take precedence. Check the licence before republishing.
 
-## Site and deployment
+## The web app
 
-The website lives in `site/` and is hosted on GitHub Pages at https://leskos.github.io/brighton-parking/.
+`site/` is a static, mobile-first map (no build step, no framework):
 
-`.github/workflows/deploy.yml` runs `scrape.py`, copies the fresh data into the site, and deploys it:
+- **`index.html` / `style.css` / `app.js`**: a MapLibre GL map on OpenFreeMap tiles. Bays are coloured by their status *right now*, in Europe/London time: free, pay, pay-or-permit, permit only, or unknown. The colours refresh every 30 seconds. Tapping a bay opens a card with its hours, when the status next changes, max stay, and PayByPhone code.
+- **Search**: postcodes (and partial postcodes like `BN1`) via [postcodes.io](https://postcodes.io), with suggestions as you type. Street and place names use OpenStreetMap's Nominatim, limited to Brighton & Hove.
+- **`manifest.webmanifest` + `icons/`**: lets you "Add to Home Screen" as an app. Regenerate the icons with `python tools/make_icons.py`.
+
+To run it locally:
+
+```
+python scrape.py                                          # fetches data into data/ and site/data/
+python -m http.server 8765 --directory site               # then open http://localhost:8765
+```
+
+## Deployment
+
+The site is hosted on GitHub Pages at https://leskos.github.io/brighton-parking/.
+
+`.github/workflows/deploy.yml` runs `scrape.py` and deploys `site/` (including fresh data):
 - on every push to `main`
 - every Monday at 04:17 UTC
 - manually, from the Actions tab (**Run workflow**)
 
-`data/` is gitignored. It's rebuilt on every deploy, so run `python scrape.py` locally to get a copy for development.
+`data/` and `site/data/` are gitignored, because they're rebuilt on every deploy.

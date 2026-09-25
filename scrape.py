@@ -9,11 +9,13 @@ Outputs (in ./data):
   parking_bays.geojson      all bays, cleaned + structured schedule
   parking_bays.csv          same attributes, no geometry (centroid lat/lon)
   metadata.json             source URLs, fetch time, counts, parse issues
+and copies parking_bays.geojson + metadata.json into site/data for the web app.
 """
 
 import csv
 import json
 import re
+import shutil
 import time
 import urllib.parse
 import urllib.request
@@ -28,6 +30,7 @@ LAYERS = {
 }
 PAGE = 1000
 OUT = Path(__file__).parent / "data"
+SITE_DATA = Path(__file__).parent / "site" / "data"   # copy served by the web app
 DAY_NAMES = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
 
 
@@ -301,6 +304,9 @@ def main():
                  "times are local (Europe/London). Always defer to on-street signage.",
     }
     (OUT / "metadata.json").write_text(json.dumps(meta, indent=2), encoding="utf-8")
+    SITE_DATA.mkdir(parents=True, exist_ok=True)
+    for name in ("parking_bays.geojson", "metadata.json"):
+        shutil.copy(OUT / name, SITE_DATA / name)
     print(f"done: {len(all_features)} bays, {len(issue_log)} flagged -> {OUT}")
 
 
