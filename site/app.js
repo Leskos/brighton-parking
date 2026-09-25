@@ -319,16 +319,23 @@ function renderSheet(id) {
   const price = priceInfo(p);
   const priceLabel = p.price_band ? prices?.bands?.[p.price_band]?.label : null;
   const sub = [p.zone && p.zone !== "SEA" && `Zone ${p.zone}`, priceLabel || (p.tariff && `${p.tariff} tariff`)].filter(Boolean).join(" · ");
-  if ((status === "pay" || status === "shared") && price?.rows.length) {
-    detail = `From ${money(price.rows[0][1])} for ${price.rows[0][0]}` + (detail ? ` · ${detail}` : "");
+  // Make the stay limit impossible to miss: it's the rule most likely to get you a ticket.
+  const maxStay = p.type !== "permit" && p.max_stay_mins != null ? `Max stay ${duration(p.max_stay_mins)}` : "";
+  if (status === "pay" || status === "shared") {
+    const from = price?.rows.length ? `From ${money(price.rows[0][1])} for ${price.rows[0][0]}` : "";
+    detail = [maxStay, from, detail].filter(Boolean).join(" · ");
+  } else if (status === "free" && maxStay && detail) {
+    detail = `${detail}, ${maxStay.toLowerCase()}`;
   }
 
   const facts = [];
   if (p.schedule) facts.push(["Hours", hoursLines(p.schedule).map(esc).join("<br>")]);
   else if (p.days_raw || p.times_raw) facts.push(["Hours", esc([p.days_raw, p.times_raw].filter(Boolean).join(", "))]);
   if (p.type !== "permit") {
-    if (p.max_stay_mins != null) facts.push(["Max stay", esc(duration(p.max_stay_mins))]);
-    if (p.no_return_mins != null) facts.push(["No return", `within ${esc(duration(p.no_return_mins))}`]);
+    facts.push(["Max stay", p.max_stay_mins != null
+      ? `<b>${esc(duration(p.max_stay_mins))}</b> during charging hours`
+      : `<span class="muted">Not recorded, so check the sign</span>`]);
+    if (p.no_return_mins != null) facts.push(["No return", `Can't come back within ${esc(duration(p.no_return_mins))} of leaving`]);
   }
   if (p.type === "shared") facts.push(["Permits", `Zone ${esc(p.zone || "?")} permit holders can park without paying`]);
   if (p.type === "permit") facts.push(["Who", `Zone ${esc(p.zone || "?")} permit holders during hours`]);

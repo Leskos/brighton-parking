@@ -364,7 +364,8 @@ function showPlanChrome() {
 function optionHtml(n) {
   const p = n.bay.p;
   const price = n.out.cost == null ? "£?" : n.out.cost === 0 ? "Free" : money(n.out.cost);
-  const what = [TYPE_TITLE[p.type], p.zone && p.zone !== "SEA" && `Zone ${p.zone}`].filter(Boolean).join(" · ");
+  const what = [TYPE_TITLE[p.type], p.zone && p.zone !== "SEA" && `Zone ${p.zone}`,
+    p.type !== "permit" && p.max_stay_mins != null && `max ${duration(p.max_stay_mins)}`].filter(Boolean).join(" · ");
   return `<li><button class="option" data-id="${esc(n.id)}">
       <span class="price${n.out.cost === planner.results.best ? " best" : ""}">${price}</span>
       <span class="what"><b>${esc(what)}</b><small>${esc(n.out.text)}</small></span>
