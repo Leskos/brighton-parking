@@ -5,7 +5,7 @@ app-friendly files.
 Usage:  python scrape.py            (stdlib only, Python 3.9+)
 
 Outputs (in ./data):
-  raw/<layer>.geojson       untouched records as served (WGS84)
+  raw/<layer>.json          untouched records as served (Esri JSON, British National Grid)
   parking_bays.geojson      all bays, cleaned + structured schedule
   parking_bays.csv          same attributes, no geometry (centroid lat/lon)
   metadata.json             source URLs, fetch time, counts, parse issues
@@ -14,6 +14,7 @@ and copies parking_bays.geojson + metadata.json into site/data for the web app.
 
 import csv
 import json
+import math
 import re
 import shutil
 import time
@@ -51,23 +52,102 @@ def get_json(url, params, retries=3):
 
 
 def fetch_layer(layer_id):
+    """All records of a layer in their native British National Grid (EPSG:27700), as Esri JSON.
+
+    We deliberately don't ask the server for WGS84 (outSR=4326): it converts without an
+    OSGB36 -> WGS84 datum transformation, which shifts everything ~128 m north-west.
+    """
     url = f"{SERVICE}/{layer_id}/query"
     expected = get_json(url, {"where": "1=1", "returnCountOnly": "true", "f": "json"})["count"]
     features, offset = [], 0
     while True:
         page = get_json(url, {
-            "where": "1=1", "outFields": "*", "returnGeometry": "true", "outSR": 4326,
+            "where": "1=1", "outFields": "*", "returnGeometry": "true", "outSR": 27700,
             "orderByFields": "OBJECTID", "resultOffset": offset, "resultRecordCount": PAGE,
-            "f": "geojson",
+            "f": "json",
         })
         batch = page.get("features", [])
         features.extend(batch)
         offset += len(batch)
-        if not batch or not (page.get("exceededTransferLimit") or page.get("properties", {}).get("exceededTransferLimit")):
+        if not batch or not page.get("exceededTransferLimit"):
             break
     if len(features) != expected:
         raise RuntimeError(f"layer {layer_id}: got {len(features)} features, expected {expected}")
-    return {"type": "FeatureCollection", "features": features}
+    return {"spatialReference": {"wkid": 27700}, "features": features}
+
+
+# --------------------------------------------------------------------------- coordinates
+
+# British National Grid (OSGB36 Transverse Mercator) -> WGS84, via the Ordnance Survey
+# inverse projection and a 7-parameter Helmert transform (OS "A guide to coordinate
+# systems in Great Britain"). Helmert alone is ~2 m off OSTN15 here, but that error is a
+# near-constant offset across the city: calibrated against postcodes.io (which uses
+# OSTN15) at 18 postcodes from Portslade to Saltdean, the residual was +1.94 m E /
+# -0.66 m N with a spread of 2-4 cm. Adding it back gets within a few cm of OSTN15.
+LOCAL_DLON, LOCAL_DLAT = 2.7655e-05, -5.984e-06
+
+
+def _bng_to_osgb36(E, N):
+    a, b, F0 = 6377563.396, 6356256.909, 0.9996012717
+    lat0, lon0, N0, E0 = math.radians(49), math.radians(-2), -100000, 400000
+    e2, n = 1 - b * b / (a * a), (a - b) / (a + b)
+    lat, M = lat0, 0.0
+    while abs(N - N0 - M) >= 1e-5:
+        lat += (N - N0 - M) / (a * F0)
+        dl, sl = lat - lat0, lat + lat0
+        M = b * F0 * ((1 + n + 1.25 * n**2 + 1.25 * n**3) * dl
+                      - (3 * n + 3 * n**2 + 21 / 8 * n**3) * math.sin(dl) * math.cos(sl)
+                      + (15 / 8 * n**2 + 15 / 8 * n**3) * math.sin(2 * dl) * math.cos(2 * sl)
+                      - 35 / 24 * n**3 * math.sin(3 * dl) * math.cos(3 * sl))
+    sin2 = math.sin(lat) ** 2
+    nu = a * F0 / math.sqrt(1 - e2 * sin2)
+    rho = a * F0 * (1 - e2) / (1 - e2 * sin2) ** 1.5
+    eta2, t, sec, dE = nu / rho - 1, math.tan(lat), 1 / math.cos(lat), E - E0
+    VII = t / (2 * rho * nu)
+    VIII = t / (24 * rho * nu**3) * (5 + 3 * t * t + eta2 - 9 * t * t * eta2)
+    IX = t / (720 * rho * nu**5) * (61 + 90 * t * t + 45 * t**4)
+    X = sec / nu
+    XI = sec / (6 * nu**3) * (nu / rho + 2 * t * t)
+    XII = sec / (120 * nu**5) * (5 + 28 * t * t + 24 * t**4)
+    XIIA = sec / (5040 * nu**7) * (61 + 662 * t * t + 1320 * t**4 + 720 * t**6)
+    return (lat - VII * dE**2 + VIII * dE**4 - IX * dE**6,
+            lon0 + X * dE - XI * dE**3 + XII * dE**5 - XIIA * dE**7)
+
+
+def bng_to_wgs84(E, N):
+    """(easting, northing) -> [lon, lat] in WGS84."""
+    lat, lon = _bng_to_osgb36(E, N)
+    a, b = 6377563.396, 6356256.909                      # Airy 1830 -> cartesian
+    e2 = 1 - b * b / (a * a)
+    nu = a / math.sqrt(1 - e2 * math.sin(lat) ** 2)
+    x, y, z = nu * math.cos(lat) * math.cos(lon), nu * math.cos(lat) * math.sin(lon), (1 - e2) * nu * math.sin(lat)
+    tx, ty, tz, s = 446.448, -125.157, 542.060, -20.4894e-6   # Helmert OSGB36 -> WGS84
+    rx, ry, rz = (math.radians(v / 3600) for v in (0.1502, 0.2470, 0.8421))
+    x, y, z = (tx + (1 + s) * x - rz * y + ry * z,
+               ty + rz * x + (1 + s) * y - rx * z,
+               tz - ry * x + rx * y + (1 + s) * z)
+    a, b = 6378137.0, 6356752.3142                       # cartesian -> WGS84 ellipsoid
+    e2 = 1 - b * b / (a * a)
+    p = math.hypot(x, y)
+    lat = math.atan2(z, p * (1 - e2))
+    for _ in range(6):
+        lat = math.atan2(z + e2 * a / math.sqrt(1 - e2 * math.sin(lat) ** 2) * math.sin(lat), p)
+    return [math.degrees(math.atan2(y, x)) + LOCAL_DLON, math.degrees(lat) + LOCAL_DLAT]
+
+
+def esri_to_geojson(feature):
+    """Esri JSON polygon in BNG -> GeoJSON Feature in WGS84 (Polygon or MultiPolygon)."""
+    polys = []
+    for ring in feature["geometry"]["rings"]:
+        # Esri outer rings are clockwise (negative shoelace area); holes are anticlockwise.
+        area = sum(x0 * y1 - x1 * y0 for (x0, y0), (x1, y1) in zip(ring, ring[1:]))
+        coords = [bng_to_wgs84(x, y) for x, y in ring]
+        if area <= 0 or not polys:
+            polys.append([coords])
+        else:
+            polys[-1].append(coords)
+    geom = {"type": "Polygon", "coordinates": polys[0]} if len(polys) == 1 else {"type": "MultiPolygon", "coordinates": polys}
+    return {"type": "Feature", "properties": feature["attributes"], "geometry": geom}
 
 
 # --------------------------------------------------------------------------- parsing
@@ -277,8 +357,8 @@ def main():
     for layer_id, bay_type in LAYERS.items():
         print(f"fetching layer {layer_id} ({bay_type}) ...", flush=True)
         raw = fetch_layer(layer_id)
-        (OUT / "raw" / f"{bay_type}.geojson").write_text(json.dumps(raw), encoding="utf-8")
-        feats = [normalise(f, bay_type) for f in raw["features"] if f.get("geometry")]
+        (OUT / "raw" / f"{bay_type}.json").write_text(json.dumps(raw), encoding="utf-8")
+        feats = [normalise(esri_to_geojson(f), bay_type) for f in raw["features"] if f.get("geometry")]
         for f in feats:
             f["properties"]["price_band"] = price_band(f["properties"], prices)
         counts[bay_type] = len(feats)
@@ -311,7 +391,7 @@ def main():
         "total": len(all_features),
         "records_with_issues": len(issue_log),
         "issues": issue_log,
-        "notes": "Coordinates are WGS84 (EPSG:4326). 'schedule' lists when the restriction applies; "
+        "notes": "Coordinates are WGS84 (EPSG:4326), converted locally from British National Grid. 'schedule' lists when the restriction applies; "
                  "times are local (Europe/London). Always defer to on-street signage.",
     }
     (OUT / "metadata.json").write_text(json.dumps(meta, indent=2), encoding="utf-8")

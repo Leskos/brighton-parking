@@ -22,7 +22,16 @@ python scrape.py      # stdlib only, ~30s; re-run any time to refresh
 - **`parking_bays.geojson`**: every bay as a polygon (WGS84, 6 dp) with the cleaned properties below. Loads directly into Leaflet or MapLibre.
 - **`parking_bays.csv`**: the same properties without geometry, plus centroid `lat`/`lon`. Useful for lists, search, or a spreadsheet.
 - **`metadata.json`**: fetch time, counts, and every record that needed an assumption or couldn't be parsed.
-- **`raw/*.geojson`**: the records exactly as the council serves them.
+- **`raw/*.json`**: the records exactly as the council serves them (Esri JSON, British National Grid).
+
+## Coordinates
+
+Don't ask the council server for WGS84 (`outSR=4326`). It converts from British National Grid without
+the OSGB36 to WGS84 datum transformation, which moves everything about 128 m north-west. Because
+Brighton's streets form a regular grid, that shift often lands bays beside the *wrong* street, so it
+looks like only a slight misalignment. `scrape.py` downloads native EPSG:27700 coordinates instead and
+converts them itself. It uses the Ordnance Survey projection maths plus a Helmert transform, with a local
+correction calibrated against postcodes.io (OSTN15), and matches OSTN15 to within about 5 cm across the city.
 
 ## Bay properties
 
